@@ -211,6 +211,3 @@ for sentence in test_sentences:
 
     print("\nEnglish :", sentence)
     print("Tamil   :", translate(sentence))
-
-
-
