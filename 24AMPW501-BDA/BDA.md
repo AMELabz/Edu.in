@@ -1,232 +1,230 @@
-# BDA Laboratory Exam --- Short & Reusable Programs
+## EXP 1: Install Hadoop and configure HDFS (pseudo-distributed)
 
-**Course:** 24AMPW501 --- Big Data Analytics with Laboratory\
-**Based on:** Uploaded *BDA LAB FINAL\_.pdf* (41 pages).\
-**Exam revision:** Commands and programs are shortened, while preserving
-the experiment's required operations.
+### AIM
+To install Hadoop 3.5.0 on Windows 11 (WSL2 Ubuntu) and configure HDFS and YARN in pseudo-distributed mode.
 
-## Read this first: reusable patterns
+### ALGORITHM
+1. Install Java 17 and SSH.
+2. Set up passwordless SSH to localhost.
+3. Extract Hadoop and set environment variables.
+4. Set `JAVA_HOME` in `hadoop-env.sh`.
+5. Write the 4 XML config files.
+6. Format the NameNode (first time only).
+7. Start HDFS and YARN, check with `jps`.
+8. Create, upload and read a test file in HDFS.
 
-### Hadoop Streaming job template (Experiments 3 and 4)
+### COMMAND/PROGRAM
+```bash
+sudo apt update && sudo apt install -y openjdk-17-jdk openssh-server
+sudo service ssh start
 
-Use this command pattern after creating `mapper.py`, `reducer.py`, and
-the input file. Change only the experiment folder/input/output names and
-the mapper/reducer logic.
+ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+ssh localhost exit
 
-``` bash
-hdfs dfs -mkdir -p /expN/input
-hdfs dfs -put -f input.txt /expN/input/
-hadoop jar "$HADOOP_HOME"/share/hadoop/tools/lib/hadoop-streaming-*.jar \
-  -input /expN/input -output /expN/output \
-  -mapper "python3 mapper.py" -reducer "python3 reducer.py" \
-  -file mapper.py -file reducer.py
-hdfs dfs -cat /expN/output/part-*
-```
+tar xzf hadoop-3.5.0.tar.gz && mv hadoop-3.5.0 ~/hadoop
+cat >> ~/.bashrc <<'EOF'
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export HADOOP_HOME=$HOME/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+EOF
+source ~/.bashrc
 
-**Important:** Hadoop fails if the output directory already exists.
-Before rerunning, use `hdfs dfs -rm -r /expN/output`. Run this only for
-the relevant experiment.
+echo "export JAVA_HOME=$JAVA_HOME" >> $HADOOP_HOME/etc/hadoop/hadoop-env.sh
 
-### Shared student dataset (Experiments 4, 7, 8, 10)
-
-``` text
-101,Arun,CSE,82
-102,Priya,AIML,94
-103,Karthik,CSE,76
-104,Divya,AIML,88
-105,Meena,CSE,95
-106,Ravi,IT,79
-```
-
-The columns are `id,name,department,marks`. Experiment 4 uses
-`name,department,marks`, so its mapper ignores the ID if you use this
-four-column version.
-
-------------------------------------------------------------------------
-
-## Experiment 1 --- Install Hadoop and configure HDFS in pseudo-distributed mode
-
-**Aim:** Configure Hadoop 3.5.0 with HDFS and YARN on Ubuntu/WSL2 and
-verify it.
-
-### Essential commands
-
-``` bash
-java -version
-hadoop version
-echo "$JAVA_HOME"
-echo "$HADOOP_HOME"
-
-cd "$HADOOP_HOME/etc/hadoop"
-```
-
-Set `JAVA_HOME` in `hadoop-env.sh` to the actual Java 17 path:
-
-``` bash
-sudo nano "$HADOOP_HOME/etc/hadoop/hadoop-env.sh"
-# Set: export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-```
-
-In `core-site.xml`:
-
-``` xml
+cd $HADOOP_HOME/etc/hadoop
+mkdir -p ~/hadoopdata/namenode ~/hadoopdata/datanode
+cat > core-site.xml <<'EOF'
 <configuration>
-  <property><name>fs.defaultFS</name><value>hdfs://localhost:9000</value></property>
+<property><name>fs.defaultFS</name><value>hdfs://localhost:9000</value></property>
 </configuration>
-```
-
-In `hdfs-site.xml` (single-machine lab setup):
-
-``` xml
+EOF
+cat > hdfs-site.xml <<EOF
 <configuration>
-  <property><name>dfs.replication</name><value>1</value></property>
-  <property><name>dfs.namenode.name.dir</name><value>file:///home/USER/hadoopdata/namenode</value></property>
-  <property><name>dfs.datanode.data.dir</name><value>file:///home/USER/hadoopdata/datanode</value></property>
+<property><name>dfs.replication</name><value>1</value></property>
+<property><name>dfs.namenode.name.dir</name><value>file://$HOME/hadoopdata/namenode</value></property>
+<property><name>dfs.datanode.data.dir</name><value>file://$HOME/hadoopdata/datanode</value></property>
 </configuration>
-```
+EOF
+cat > mapred-site.xml <<'EOF'
+<configuration>
+<property><name>mapreduce.framework.name</name><value>yarn</value></property>
+<property><name>mapreduce.application.classpath</name><value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*</value></property>
+</configuration>
+EOF
+cat > yarn-site.xml <<'EOF'
+<configuration>
+<property><name>yarn.nodemanager.aux-services</name><value>mapreduce_shuffle</value></property>
+</configuration>
+EOF
 
-Replace `USER` with your Ubuntu username. Create those directories and
-configure `mapred-site.xml` and `yarn-site.xml` as instructed by your
-installed Hadoop setup.
+hdfs namenode -format
 
-### Format once, start, verify
-
-``` bash
-hdfs namenode -format     # FIRST SETUP ONLY; do not repeat on existing data
 start-dfs.sh
 start-yarn.sh
 jps
-```
 
-Expected daemons include `NameNode`, `DataNode`, `SecondaryNameNode`,
-`ResourceManager`, and `NodeManager`.
-
-### Test HDFS
-
-``` bash
 hdfs dfs -mkdir -p /user/$USER/input
 echo "Hadoop Distributed File System Test" > test.txt
-hdfs dfs -put -f test.txt /user/$USER/input/
+hdfs dfs -put test.txt /user/$USER/input/
 hdfs dfs -ls /user/$USER/input
 hdfs dfs -cat /user/$USER/input/test.txt
 ```
 
-**Remember:** `hdfs namenode -format` is a first-time initialization
-step; formatting an existing NameNode can destroy its namespace
-metadata.
+### OUTPUT
+```
+NameNode
+DataNode
+SecondaryNameNode
+ResourceManager
+NodeManager
+Jps
+Hadoop Distributed File System Test
+```
 
-------------------------------------------------------------------------
+### RESULT
+Hadoop was configured in pseudo-distributed mode. HDFS and YARN started successfully, and a test file was created, uploaded and read from HDFS.
 
-## Experiment 2 --- Basic HDFS commands
+---
 
-**Aim:** Create, upload, inspect, replicate, download and delete files.
+## EXP 2: Basic HDFS commands
 
-``` bash
-start-dfs.sh
-jps
+### AIM
+To perform file creation, upload, download, replication and deletion using HDFS commands.
 
-hdfs dfs -mkdir -p /user/$USER/exp2
+### ALGORITHM
+1. Start HDFS and check with `jps`.
+2. Make an HDFS directory.
+3. Create a local file and upload it.
+4. List, read and check the file.
+5. Change the replication factor.
+6. Download the file.
+7. Delete the file and the directory.
+8. List to confirm deletion.
+
+### COMMAND/PROGRAM
+```bash
+start-dfs.sh && jps
+D=/user/$USER/exp2
+hdfs dfs -mkdir -p $D
 echo "HDFS Basic Commands Experiment" > exp2.txt
-
-hdfs dfs -put -f exp2.txt /user/$USER/exp2/
-hdfs dfs -ls /user/$USER/exp2
-hdfs dfs -cat /user/$USER/exp2/exp2.txt
-hdfs dfs -stat "%n %b bytes" /user/$USER/exp2/exp2.txt
-hdfs dfs -setrep -w 1 /user/$USER/exp2/exp2.txt
-
-hdfs dfs -get /user/$USER/exp2/exp2.txt exp2_downloaded.txt
+hdfs dfs -put exp2.txt $D/
+hdfs dfs -ls $D
+hdfs dfs -cat $D/exp2.txt
+hdfs dfs -stat "%n %b bytes" $D/exp2.txt
+hdfs dfs -setrep -w 1 $D/exp2.txt
+hdfs dfs -get $D/exp2.txt exp2_downloaded.txt
 cat exp2_downloaded.txt
-
-hdfs dfs -rm /user/$USER/exp2/exp2.txt
-hdfs dfs -rmdir /user/$USER/exp2
+hdfs dfs -rm $D/exp2.txt
+hdfs dfs -rmdir $D
 hdfs dfs -ls /user/$USER
 ```
 
-**Remember:** `-put` uploads, `-get` downloads, `-cat` reads, `-rm`
-deletes a file, and `-rmdir` removes an empty directory. A replication
-factor of 1 is appropriate for a single DataNode lab setup.
-
-------------------------------------------------------------------------
-
-## Experiment 3 --- MapReduce Word Count using Hadoop Streaming
-
-**Aim:** Count each word in a text file.
-
-### `mapper.py`
-
-``` python
-import re, sys
-
-for line in sys.stdin:
-    for word in re.findall(r"[a-zA-Z0-9']+", line.lower()):
-        print(f"{word}\t1")
+### OUTPUT
+```
+Found 1 items
+-rw-r--r--   1 user supergroup   31 ... /user/user/exp2/exp2.txt
+HDFS Basic Commands Experiment
+exp2.txt 31 bytes
+Replication 1 set: /user/user/exp2/exp2.txt
+HDFS Basic Commands Experiment        (downloaded copy)
+Deleted /user/user/exp2/exp2.txt
 ```
 
-### `reducer.py`
+### RESULT
+File creation, upload, download, replication, listing and deletion were done successfully using HDFS commands.
 
-Hadoop sorts mapper output by key, so the reducer can total one word at
-a time.
+---
 
-``` python
-import sys
-
-word_now, total = None, 0
-for line in sys.stdin:
-    word, n = line.strip().split("\t")
-    n = int(n)
-    if word == word_now:
-        total += n
-    else:
-        if word_now is not None:
-            print(f"{word_now}\t{total}")
-        word_now, total = word, n
-
-if word_now is not None:
-    print(f"{word_now}\t{total}")
+```bash
+N=3; F=input.txt
+hdfs dfs -rm -r -f /exp$N
+hdfs dfs -mkdir -p /exp$N/input && hdfs dfs -put -f $F /exp$N/input/
+hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
+  -input /exp$N/input -output /exp$N/output \
+  -mapper "python3 mapper.py" -reducer "python3 reducer.py" \
+  -file mapper.py -file reducer.py
+hdfs dfs -cat /exp$N/output/part-*
 ```
 
-### Input and local test
+```bash
+cat $F | python3 mapper.py | sort | python3 reducer.py
+```
 
-Create `input.txt`, for example:
+### EXP 3: Word Count
 
-``` text
+#### AIM
+To write a MapReduce Word Count program using Python and Hadoop Streaming.
+
+#### ALGORITHM
+1. Mapper reads each line, makes it lowercase, extracts words.
+2. Mapper prints `word<TAB>1`.
+3. Hadoop shuffles and sorts, so same words come together.
+4. Reducer groups by word and adds the 1s.
+5. Reducer prints `word<TAB>total`.
+
+#### COMMAND/PROGRAM
+`input.txt`
+```
 Hadoop is a Big Data framework
 Hadoop uses MapReduce
 Python can be used with Hadoop Streaming
 MapReduce processes Big Data efficiently
 ```
 
-Run locally first:
-
-``` bash
-cat input.txt | python3 mapper.py | sort | python3 reducer.py
+`mapper.py`
+```python
+import re, sys
+for l in sys.stdin:
+    for w in re.findall(r"[\w']+", l.lower()): print(w, 1, sep="\t")
 ```
 
-### Run on Hadoop
-
-``` bash
-hdfs dfs -mkdir -p /exp3/input
-hdfs dfs -put -f input.txt /exp3/input/
-hadoop jar "$HADOOP_HOME"/share/hadoop/tools/lib/hadoop-streaming-*.jar \
-  -input /exp3/input -output /exp3/output \
-  -mapper "python3 mapper.py" -reducer "python3 reducer.py" \
-  -file mapper.py -file reducer.py
-hdfs dfs -cat /exp3/output/part-*
+`reducer.py`
+```python
+import sys
+from itertools import groupby
+for k, g in groupby((l.split("\t") for l in sys.stdin), lambda p: p[0]):
+    print(k, sum(int(p[1]) for p in g), sep="\t")
 ```
 
-**Output check:** `hadoop` appears 3 times, `big` 2 times, and
-`mapreduce` 2 times for the sample above.
+#### OUTPUT
+```
+a	1
+be	1
+big	2
+can	1
+data	2
+efficiently	1
+framework	1
+hadoop	3
+is	1
+mapreduce	2
+processes	1
+python	1
+streaming	1
+used	1
+uses	1
+with	1
+```
 
-------------------------------------------------------------------------
+#### RESULT
+The Word Count program ran successfully with Hadoop Streaming. "hadoop" appeared 3 times, "big", "data" and "mapreduce" 2 times each, and every other word once.
 
-## Experiment 4 --- Hadoop Streaming: department-wise average marks
+### EXP 4: Department-wise average marks
 
-**Aim:** Use Python mapper/reducer scripts to calculate each
-department's average marks.
+#### AIM
+To use Python Mapper and Reducer with Hadoop Streaming to find the average marks of each department.
 
-### `students.txt`
+#### ALGORITHM
+1. Mapper reads `name,department,marks`, skips bad lines.
+2. Mapper prints `department<TAB>marks`.
+3. Hadoop shuffles and sorts by department.
+4. Reducer groups by department, collects marks.
+5. Reducer prints `department<TAB>sum/count` with 2 decimals.
 
-``` text
+#### COMMAND/PROGRAM
+`students.txt`
+```
 Arun,CSE,82
 Priya,AIML,94
 Karthik,CSE,76
@@ -235,357 +233,302 @@ Meena,CSE,95
 Ravi,IT,79
 ```
 
-### `mapper.py`
-
-``` python
+`mapper.py`
+```python
 import sys
-
-for line in sys.stdin:
-    p = line.strip().split(",")
-    if len(p) == 3:
-        name, dept, marks = p
-        try:
-            print(f"{dept}\t{int(marks)}")
-        except ValueError:
-            pass
+for l in sys.stdin:
+    p = l.strip().split(",")
+    if len(p) == 3 and p[2].isdigit(): print(p[1], p[2], sep="\t")
 ```
 
-### `reducer.py`
-
-``` python
+`reducer.py`
+```python
 import sys
-
-dept_now, total, count = None, 0, 0
-for line in sys.stdin:
-    dept, marks = line.strip().split("\t")
-    marks = int(marks)
-    if dept != dept_now:
-        if dept_now is not None:
-            print(f"{dept_now}\t{total/count:.2f}")
-        dept_now, total, count = dept, 0, 0
-    total += marks
-    count += 1
-
-if dept_now is not None:
-    print(f"{dept_now}\t{total/count:.2f}")
+from itertools import groupby
+for k, g in groupby((l.split("\t") for l in sys.stdin), lambda p: p[0]):
+    m = [int(p[1]) for p in g]
+    print(k, f"{sum(m)/len(m):.2f}", sep="\t")
 ```
 
-### Test and execute
-
-``` bash
-cat students.txt | python3 mapper.py | sort | python3 reducer.py
-hdfs dfs -mkdir -p /exp4/input
-hdfs dfs -put -f students.txt /exp4/input/
-hadoop jar "$HADOOP_HOME"/share/hadoop/tools/lib/hadoop-streaming-*.jar \
-  -input /exp4/input -output /exp4/output \
-  -mapper "python3 mapper.py" -reducer "python3 reducer.py" \
-  -file mapper.py -file reducer.py
-hdfs dfs -cat /exp4/output/part-*
+#### OUTPUT
+```
+AIML	91.00
+CSE	84.33
+IT	79.00
 ```
 
-Expected averages:
+#### RESULT
+Department-wise average marks were calculated successfully using Hadoop Streaming with Python scripts.
 
-``` text
-AIML    91.00
-CSE     84.33
-IT      79.00
-```
+---
 
-**Reusable idea:** Experiment 3 and 4 use the same Streaming command
-structure. Only the mapper output and reducer calculation change.
+## EXP 5: Cassandra Query Language (CQL)
 
-------------------------------------------------------------------------
+### AIM
+To store and retrieve data in Cassandra using CQL (create keyspace and table, INSERT, SELECT, UPDATE, DELETE).
 
-## Experiment 5 --- Cassandra Query Language (CQL) CRUD
+### ALGORITHM
+1. Start the Cassandra container and open `cqlsh`.
+2. Create keyspace `studentdb` and table `student`.
+3. Insert 5 student records.
+4. Select all records.
+5. Update Priya's marks to 94.
+6. Delete student 103.
+7. Select all records again.
 
-**Aim:** Create a keyspace/table and perform insert, select, update and
-delete.
-
-### Start Cassandra and open CQL shell
-
-``` bash
+### COMMAND/PROGRAM
+```bash
 docker start cassandra-lab
-docker ps
 docker exec -it cassandra-lab cqlsh
 ```
-
-### Run inside `cqlsh`
-
-``` sql
-CREATE KEYSPACE IF NOT EXISTS studentdb
-WITH replication = {'class':'SimpleStrategy','replication_factor':1};
+Inside `cqlsh`:
+```sql
+CREATE KEYSPACE studentdb WITH replication = {'class':'SimpleStrategy','replication_factor':1};
 USE studentdb;
+CREATE TABLE student (student_id INT PRIMARY KEY, name TEXT, department TEXT, year INT, marks INT);
 
-CREATE TABLE IF NOT EXISTS student (
-  student_id INT PRIMARY KEY,
-  name TEXT, department TEXT, year INT, marks INT
-);
-
-INSERT INTO student (student_id,name,department,year,marks)
-VALUES (101,'Arun','CSE',3,82);
-INSERT INTO student (student_id,name,department,year,marks)
-VALUES (102,'Priya','AIML',3,90);
-INSERT INTO student (student_id,name,department,year,marks)
-VALUES (103,'Karthik','CSE',3,76);
-INSERT INTO student (student_id,name,department,year,marks)
-VALUES (104,'Divya','AIML',3,88);
-INSERT INTO student (student_id,name,department,year,marks)
-VALUES (105,'Meena','CSE',3,95);
+INSERT INTO student (student_id,name,department,year,marks) VALUES (101,'Arun','CSE',3,82);
+INSERT INTO student (student_id,name,department,year,marks) VALUES (102,'Priya','AIML',3,90);
+INSERT INTO student (student_id,name,department,year,marks) VALUES (103,'Karthik','CSE',3,76);
+INSERT INTO student (student_id,name,department,year,marks) VALUES (104,'Divya','AIML',3,88);
+INSERT INTO student (student_id,name,department,year,marks) VALUES (105,'Meena','CSE',3,95);
 
 SELECT * FROM student;
-UPDATE student SET marks=94 WHERE student_id=102;
-SELECT * FROM student WHERE student_id=102;
-DELETE FROM student WHERE student_id=103;
+UPDATE student SET marks = 94 WHERE student_id = 102;
+DELETE FROM student WHERE student_id = 103;
 SELECT * FROM student;
 ```
 
-**Remember:** In Cassandra, the `WHERE` clause for these update/delete
-operations uses the primary key (`student_id`).
+### OUTPUT
+```
+ student_id | name  | department | year | marks
+------------+-------+------------+------+-------
+        101 | Arun  |        CSE |    3 |    82
+        102 | Priya |       AIML |    3 |    94
+        104 | Divya |       AIML |    3 |    88
+        105 | Meena |        CSE |    3 |    95
+```
 
-------------------------------------------------------------------------
+### RESULT
+Keyspace and table creation, insertion, retrieval, update and deletion of student records were done using CQL.
 
-## Experiment 6 --- Key-value and document-style NoSQL CRUD using Python
+---
 
-**Aim:** Use a dictionary as key-value storage; each value is a document
-containing fields.
+## EXP 6: Key-Value and Document models (Python)
 
-``` python
-products = {
-    "P101": {"name":"Laptop", "category":"Electronics", "price":65000, "stock":20},
-    "P102": {"name":"Smartphone", "category":"Electronics", "price":28000, "stock":35},
-    "P103": {"name":"Office Chair", "category":"Furniture", "price":7500, "stock":15}
+### AIM
+To create Key-Value and Document-oriented data models and perform CRUD operations.
+
+### ALGORITHM
+1. Key-Value: dictionary of `ID -> name`.
+2. Read one value by key.
+3. Update one value, add one key, delete one key.
+4. Document: dictionary of `ID -> {fields}`.
+5. Read, update a field, add a document, delete a document.
+6. Print the final data.
+
+### COMMAND/PROGRAM
+`exp6.py`
+```python
+kv = {"P101": "Laptop", "P102": "Smartphone", "P103": "Office Chair"}
+print("KEY-VALUE:", kv)
+print("Read P101:", kv["P101"])
+kv["P102"] = "5G Smartphone"
+kv["P104"] = "Tablet"
+del kv["P103"]
+print("After CRUD:", kv)
+
+db = {
+    "P101": {"name": "Laptop", "category": "Electronics", "price": 65000, "stock": 20},
+    "P102": {"name": "Smartphone", "category": "Electronics", "price": 28000, "stock": 35},
+    "P103": {"name": "Office Chair", "category": "Furniture", "price": 7500, "stock": 15},
 }
+print("\nDOCUMENTS:")
+for k, v in db.items(): print(k, v)
+print("Read P101:", db["P101"])
+db["P102"]["price"] = 26000
+db["P104"] = {"name": "Tablet", "category": "Electronics", "price": 22000, "stock": 18}
+del db["P103"]
+print("After CRUD:")
+for k, v in db.items(): print(k, v)
+```
+Run: `python3 exp6.py`
 
-print("INITIAL")
-for k, v in products.items():
-    print(k, v)
+### OUTPUT
+```
+KEY-VALUE: {'P101': 'Laptop', 'P102': 'Smartphone', 'P103': 'Office Chair'}
+Read P101: Laptop
+After CRUD: {'P101': 'Laptop', 'P102': '5G Smartphone', 'P104': 'Tablet'}
 
-print("\nREAD:", products["P101"])              # Read
-products["P102"]["price"] = 26000              # Update
-del products["P103"]                           # Delete
-products["P104"] = {"name":"Tablet", "category":"Electronics",
-                    "price":22000, "stock":18} # Create
-
-print("\nFINAL")
-for k, v in products.items():
-    print(k, v)
-print("CRUD OPERATIONS COMPLETED")
+DOCUMENTS:
+P101 {'name': 'Laptop', 'category': 'Electronics', 'price': 65000, 'stock': 20}
+P102 {'name': 'Smartphone', 'category': 'Electronics', 'price': 28000, 'stock': 35}
+P103 {'name': 'Office Chair', 'category': 'Furniture', 'price': 7500, 'stock': 15}
+Read P101: {'name': 'Laptop', 'category': 'Electronics', 'price': 65000, 'stock': 20}
+After CRUD:
+P101 {'name': 'Laptop', 'category': 'Electronics', 'price': 65000, 'stock': 20}
+P102 {'name': 'Smartphone', 'category': 'Electronics', 'price': 26000, 'stock': 35}
+P104 {'name': 'Tablet', 'category': 'Electronics', 'price': 22000, 'stock': 18}
 ```
 
-Save as `exp6_nosql.py`, run `python3 exp6_nosql.py`.\
-**CRUD:** Create = add a key/document; Read = access by key; Update =
-change a field; Delete = remove a key.
+### RESULT
+Key-Value and Document models were created, and Create, Read, Update and Delete operations were done successfully.
 
-------------------------------------------------------------------------
+---
 
-## Experiment 7 --- Pig Latin: filter, group, aggregate and join
+## EXP 7: Pig Latin (filter, group, aggregate, join)
 
-**Aim:** Process student and department datasets with Apache Pig.
+### AIM
+To write Pig Latin scripts for filtering, grouping, joining and aggregation on student data.
 
-### Create input files
+### ALGORITHM
+1. Create `students.txt` and `departments.txt`.
+2. LOAD the students.
+3. FILTER marks > 80.
+4. GROUP by department, then COUNT, AVG, MAX.
+5. LOAD departments and JOIN on department.
+6. STORE each result and show it.
 
-`input/students.txt`:
-
-``` text
+### COMMAND/PROGRAM
+```bash
+mkdir -p ~/exp7_pig/input && cd ~/exp7_pig
+cat > input/students.txt <<'EOF'
 101,Arun,CSE,82
 102,Priya,AIML,94
 103,Karthik,CSE,76
 104,Divya,AIML,88
 105,Meena,CSE,95
 106,Ravi,IT,79
-```
-
-`input/departments.txt`:
-
-``` text
+EOF
+cat > input/departments.txt <<'EOF'
 CSE,Computer Science
 AIML,Artificial Intelligence
 IT,Information Technology
+EOF
 ```
 
-Create the folder first: `mkdir -p ~/exp7_pig/input && cd ~/exp7_pig`
-
-### `filter.pig`
-
-``` pig
-s = LOAD 'input/students.txt' USING PigStorage(',')
-    AS (id:int, name:chararray, dept:chararray, marks:int);
+`filter.pig`
+```pig
+s = LOAD 'input/students.txt' USING PigStorage(',') AS (id:int, name:chararray, dept:chararray, marks:int);
 f = FILTER s BY marks > 80;
-DUMP f;
+STORE f INTO 'output_filter' USING PigStorage(',');
 ```
 
-Run: `pig -x local filter.pig`
-
-### `summary.pig` --- grouping and aggregation
-
-``` pig
-s = LOAD 'input/students.txt' USING PigStorage(',')
-    AS (id:int, name:chararray, dept:chararray, marks:int);
+`summary.pig`
+```pig
+s = LOAD 'input/students.txt' USING PigStorage(',') AS (id:int, name:chararray, dept:chararray, marks:int);
 g = GROUP s BY dept;
-a = FOREACH g GENERATE group AS department,
-    COUNT(s) AS student_count,
-    AVG(s.marks) AS average_marks,
-    MAX(s.marks) AS highest_marks;
-DUMP a;
+a = FOREACH g GENERATE group AS department, COUNT(s) AS student_count, AVG(s.marks) AS average_marks, MAX(s.marks) AS highest_marks;
+STORE a INTO 'output_summary' USING PigStorage(',');
 ```
 
-Run: `pig -x local summary.pig`
-
-### `join.pig` --- join students with department names
-
-``` pig
-s = LOAD 'input/students.txt' USING PigStorage(',')
-    AS (id:int, name:chararray, dept:chararray, marks:int);
-d = LOAD 'input/departments.txt' USING PigStorage(',')
-    AS (dept:chararray, dept_name:chararray);
+`join.pig`
+```pig
+s = LOAD 'input/students.txt' USING PigStorage(',') AS (id:int, name:chararray, dept:chararray, marks:int);
+d = LOAD 'input/departments.txt' USING PigStorage(',') AS (dept:chararray, dept_name:chararray);
 j = JOIN s BY dept, d BY dept;
-r = FOREACH j GENERATE s::id, s::name, s::dept,
-    d::dept_name, s::marks;
-DUMP r;
+r = FOREACH j GENERATE s::id, s::name, s::dept, d::dept_name, s::marks;
+STORE r INTO 'output_join' USING PigStorage(',');
 ```
 
-Run: `pig -x local join.pig`
+Run and show:
+```bash
+pig -x local filter.pig  && cat output_filter/part-m-00000
+pig -x local summary.pig && cat output_summary/part-r-00000
+pig -x local join.pig    && cat output_join/part-r-00000
+```
 
-**Exam keywords:** `LOAD` reads data, `FILTER` selects rows, `GROUP`
-groups rows, `FOREACH ... GENERATE` builds output, `JOIN` combines
-datasets, `DUMP` displays results. The PDF uses `STORE` to write
-results; use `STORE result INTO 'output_name' USING PigStorage(',');` if
-your question explicitly asks to store output.
+### OUTPUT
+```
+101,Arun,CSE,82
+102,Priya,AIML,94
+104,Divya,AIML,88
+105,Meena,CSE,95
 
-------------------------------------------------------------------------
+IT,1,79.0,79
+CSE,3,84.33333333333333,95
+AIML,2,91.0,94
 
-## Experiment 8 --- Hive tables and HiveQL queries
+106,Ravi,IT,Information Technology,79
+105,Meena,CSE,Computer Science,95
+103,Karthik,CSE,Computer Science,76
+101,Arun,CSE,Computer Science,82
+104,Divya,AIML,Artificial Intelligence,88
+102,Priya,AIML,Artificial Intelligence,94
+```
 
-**Aim:** Create a database/table, insert student data, filter and
-aggregate.
+### RESULT
+Filtering, grouping, aggregation and joining were done successfully on the student and department datasets using Apache Pig.
 
-### Start services (Ubuntu terminal)
+---
 
-``` bash
-start-dfs.sh
-start-yarn.sh
+### EXP 8: Hive tables and HiveQL queries
+
+#### AIM
+To create Hive tables and run HiveQL DDL commands and simple analytical queries.
+
+#### ALGORITHM
+1. Start Hadoop and connect with Beeline.
+2. Create database and table.
+3. Insert the student records.
+4. Select all records.
+5. Filter marks > 80.
+6. Group by department with COUNT, AVG, MAX.
+
+#### COMMAND/PROGRAM
+```bash
+start-dfs.sh && start-yarn.sh
 beeline -u jdbc:hive2://localhost:10000
 ```
-
-### Run inside Beeline
-
-``` sql
+Inside Beeline:
+```sql
 CREATE DATABASE IF NOT EXISTS studentdb;
 USE studentdb;
+CREATE TABLE student (student_id INT, name STRING, department STRING, marks INT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE;
 
-CREATE TABLE IF NOT EXISTS student (
-  student_id INT, name STRING, department STRING, marks INT
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-STORED AS TEXTFILE;
-
-INSERT INTO student VALUES
-(101,'Arun','CSE',82),
-(102,'Priya','AIML',94),
-(103,'Karthik','CSE',76),
-(104,'Divya','AIML',88),
-(105,'Meena','CSE',95),
-(106,'Ravi','IT',79);
+INSERT INTO student VALUES (101,'Arun','CSE',82),(102,'Priya','AIML',94),(103,'Karthik','CSE',76),
+(104,'Divya','AIML',88),(105,'Meena','CSE',95),(106,'Ravi','IT',79);
 
 SELECT * FROM student;
-
-SELECT student_id,name,department,marks
-FROM student WHERE marks > 80;
-
-SELECT department, COUNT(*) AS student_count,
-       ROUND(AVG(marks),2) AS average_marks,
-       MAX(marks) AS highest_marks
+SELECT * FROM student WHERE marks > 80;
+SELECT department, COUNT(*) AS student_count, ROUND(AVG(marks),2) AS average_marks, MAX(marks) AS highest_marks
 FROM student GROUP BY department;
 ```
 
-**Remember:** `CREATE DATABASE` and `CREATE TABLE` are DDL; `INSERT`
-adds records; `SELECT ... WHERE` filters; `GROUP BY` with `COUNT`,
-`AVG`, and `MAX` performs analytics.
+#### OUTPUT
+```
+-- SELECT * FROM student
+101 Arun CSE 82 | 102 Priya AIML 94 | 103 Karthik CSE 76
+104 Divya AIML 88 | 105 Meena CSE 95 | 106 Ravi IT 79
 
-------------------------------------------------------------------------
+-- marks > 80
+101 Arun CSE 82 | 102 Priya AIML 94 | 104 Divya AIML 88 | 105 Meena CSE 95
 
-## Experiment 9 --- Python visualizations: line, bar, pie, scatter, box
-
-**Aim:** Draw all five chart types using Pandas and Matplotlib.
-
-Install once: `python3 -m pip install pandas matplotlib`
-
-Save as `visualization.py`:
-
-``` python
-import pandas as pd
-import matplotlib.pyplot as plt
-
-df = pd.DataFrame({
-    "Month": ["Jan","Feb","Mar","Apr","May"],
-    "Sales": [120,150,180,160,210],
-    "Profit": [20,30,42,35,50]
-})
-print(df)
-
-# Line chart
-plt.plot(df.Month, df.Sales, marker="o")
-plt.title("Monthly Sales"); plt.xlabel("Month"); plt.ylabel("Sales")
-plt.grid(True); plt.show()
-
-# Bar chart
-plt.bar(df.Month, df.Sales)
-plt.title("Sales by Month"); plt.xlabel("Month"); plt.ylabel("Sales")
-plt.show()
-
-# Pie chart
-plt.pie(df.Sales, labels=df.Month, autopct="%1.1f%%")
-plt.title("Monthly Sales Distribution"); plt.show()
-
-# Scatter plot
-plt.scatter(df.Sales, df.Profit)
-plt.title("Sales vs Profit"); plt.xlabel("Sales"); plt.ylabel("Profit")
-plt.grid(True); plt.show()
-
-# Box plot
-plt.boxplot(df.Sales)
-plt.title("Sales Distribution"); plt.ylabel("Sales"); plt.show()
-
-print("All five visualizations created successfully.")
+-- group by department
+CSE   3  84.33  95
+AIML  2  91.0   94
+IT    1  79.0   79
 ```
 
-Run: `python3 visualization.py`\
-**Memory trick:** line = trend; bar = comparison; pie = proportion;
-scatter = relationship; box = distribution/spread.
+#### RESULT
+A Hive database and table were created, and student records were inserted, filtered and aggregated using HiveQL.
 
-------------------------------------------------------------------------
+### EXP 10: Hive case study (load CSV from HDFS)
 
-## Experiment 10 --- Hive case study with CSV loaded from HDFS
+#### AIM
+To create a Hive table, load a CSV dataset from HDFS and analyse it with HiveQL.
 
-**Aim:** Create a Hive table, load a CSV dataset, filter students and
-calculate department statistics.
+#### ALGORITHM
+1. Start Hadoop.
+2. Create `students.csv` and upload it to HDFS.
+3. Connect with Beeline, create the table.
+4. Load the CSV into the table.
+5. Select all, filter marks > 80, group by department.
 
-### Start Hadoop and connect (Ubuntu terminal)
-
-``` bash
-start-dfs.sh
-start-yarn.sh
-beeline -u jdbc:hive2://localhost:10000
-```
-
-### Create the database and table (inside Beeline)
-
-``` sql
-CREATE DATABASE IF NOT EXISTS studentdb;
-USE studentdb;
-
-CREATE TABLE IF NOT EXISTS student_case (
-  student_id INT, name STRING, department STRING, marks INT
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-STORED AS TEXTFILE;
-!quit
-```
-
-### Create CSV and upload it (Ubuntu terminal)
-
-``` bash
-mkdir -p ~/exp10 && cd ~/exp10
+#### COMMAND/PROGRAM
+```bash
+start-dfs.sh && start-yarn.sh
 cat > students.csv <<'EOF'
 101,Arun,CSE,82
 102,Priya,AIML,94
@@ -594,84 +537,84 @@ cat > students.csv <<'EOF'
 105,Meena,CSE,95
 106,Ravi,IT,79
 EOF
-
-hdfs dfs -mkdir -p /exp10/input
-hdfs dfs -put -f students.csv /exp10/input/
-```
-
-### Load and query (reconnect to Beeline)
-
-``` bash
+hdfs dfs -mkdir -p /exp10/input && hdfs dfs -put -f students.csv /exp10/input/
 beeline -u jdbc:hive2://localhost:10000
 ```
-
-``` sql
+Inside Beeline:
+```sql
+CREATE DATABASE IF NOT EXISTS studentdb;
 USE studentdb;
+CREATE TABLE student_case (student_id INT, name STRING, department STRING, marks INT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE;
+
 LOAD DATA INPATH '/exp10/input/students.csv' INTO TABLE student_case;
 
 SELECT * FROM student_case;
-
-SELECT student_id,name,department,marks
-FROM student_case WHERE marks > 80;
-
-SELECT department, COUNT(*) AS student_count,
-       ROUND(AVG(marks),2) AS average_marks,
-       MAX(marks) AS highest_marks
+SELECT * FROM student_case WHERE marks > 80;
+SELECT department, COUNT(*) AS student_count, ROUND(AVG(marks),2) AS average_marks, MAX(marks) AS highest_marks
 FROM student_case GROUP BY department;
 ```
 
-**Important:** Experiment 8 inserts rows using HiveQL `INSERT`;
-Experiment 10 demonstrates loading a CSV from HDFS with
-`LOAD DATA INPATH`. Keep these differences in mind.
+#### OUTPUT
 
-------------------------------------------------------------------------
+```
+All 6 records
+Marks > 80: Arun 82, Priya 94, Divya 88, Meena 95
+CSE   3  84.33  95
+AIML  2  91.0   94
+IT    1  79.0   79
+```
 
-## Last-minute command recall
+#### RESULT
+A Hive case study was done: table creation, loading a CSV from HDFS, filtering and department-wise analysis using HiveQL.
 
-  -----------------------------------------------------------------------
-  Task                                Command / keyword
-  ----------------------------------- -----------------------------------
-  Start HDFS / YARN                   `start-dfs.sh` / `start-yarn.sh`
+---
 
-  List Hadoop daemons                 `jps`
+## EXP 9: Data visualization (Pandas and Matplotlib)
 
-  HDFS list / read / upload /         `hdfs dfs -ls`, `-cat`, `-put`,
-  download                            `-get`
+### AIM
+To create line, bar, pie, scatter and box plots using Python.
 
-  HDFS delete                         `hdfs dfs -rm`, `hdfs dfs -rm -r`
+### ALGORITHM
+1. Import Pandas and Matplotlib.
+2. Make a DataFrame with Month, Sales, Profit.
+3. Make a 2 x 3 grid of plots.
+4. Draw line, bar, pie, scatter and box plots.
+5. Show the figure.
 
-  Word Count                          Mapper emits `word<TAB>1`; reducer
-                                      sums counts
+### COMMAND/PROGRAM
+```bash
+python3 -m pip install pandas matplotlib
+```
+`viz.py`
+```python
+import pandas as pd, matplotlib.pyplot as plt
+df = pd.DataFrame({"Month": ["Jan","Feb","Mar","Apr","May"],
+                   "Sales": [120,150,180,160,210], "Profit": [20,30,42,35,50]})
+print(df)
+f, a = plt.subplots(2, 3, figsize=(14, 8))
+a[0,0].plot(df.Month, df.Sales, marker="o"); a[0,0].set_title("Line")
+a[0,1].bar(df.Month, df.Sales);              a[0,1].set_title("Bar")
+a[0,2].pie(df.Sales, labels=df.Month, autopct="%1.1f%%"); a[0,2].set_title("Pie")
+a[1,0].scatter(df.Sales, df.Profit);         a[1,0].set_title("Scatter")
+a[1,1].boxplot(df.Sales);                    a[1,1].set_title("Box")
+a[1,2].axis("off")
+plt.tight_layout(); plt.show()
+```
+Run: `python3 viz.py`
 
-  Department average                  Mapper emits
-                                      `department<TAB>marks`; reducer
-                                      calculates `total/count`
+### OUTPUT
+```
+  Month  Sales  Profit
+0   Jan    120      20
+1   Feb    150      30
+2   Mar    180      42
+3   Apr    160      35
+4   May    210      50
+```
+One window with 5 plots: line chart, bar chart, pie chart (May = 25.6%), scatter plot (profit rises with sales), box plot (median = 160).
 
-  Cassandra CRUD                      `INSERT`, `SELECT`, `UPDATE`,
-                                      `DELETE`
+### RESULT
+Line, bar, pie, scatter and box plots were created successfully using Python, Pandas and Matplotlib.
 
-  Python NoSQL CRUD                   dictionary add, access, assign
-                                      field, `del`
-
-  Pig operations                      `LOAD`, `FILTER`, `GROUP`,
-                                      `FOREACH`, `JOIN`, `DUMP` / `STORE`
-
-  Hive analytics                      `WHERE`, `GROUP BY`, `COUNT`,
-                                      `AVG`, `MAX`
-
-  Visualizations                      `plot`, `bar`, `pie`, `scatter`,
-                                      `boxplot`
-  -----------------------------------------------------------------------
-
-## Source / accuracy notes
-
--   Experiment titles, sample student data, tool versions, and required
-    operations follow the uploaded BDA lab PDF.
--   This is a shortened revision version, not a replacement for
-    setup-specific configuration on the lab machine. Experiment 1
-    requires environment variables, SSH, and Hadoop XML files to match
-    the actual installation.
--   The supplied GitHub folder could not be retrieved through the
-    available GitHub connection in this session, so this guide is based
-    on the uploaded PDF; no unverified Markdown content has been
-    attributed to that repository.
+---
