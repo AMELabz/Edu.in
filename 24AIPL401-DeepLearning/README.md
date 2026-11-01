@@ -1,144 +1,290 @@
 # Deep Learning Lab
 
-This repository contains Python implementations for the Deep Learning Laboratory course (Code: 24AIP-C403-L401, Academic Year: 2026 – 2027).
+This repository contains Python implementations for the Deep Learning Laboratory course (**Code: 24AIP-C403-L401**, Academic Year **2026–2027**).
 
-Experiments are split into two frameworks:
+The TensorFlow experiments are documented in the [Short-Version.ipynb notebook](TensorFlow/Short-Version.ipynb). This README covers all 11 experiments in that notebook.
 
-- **TensorFlow/** — 5 Python scripts (Experiments 1 to 5)
+## Contents
 
-## 🛠️ Environment Setup & Installation
+- [Environment Setup](#-environment-setup)
+- [Install Dependencies](#-install-dependencies)
+- [List of Experiments](#-list-of-experiments)
+- [Datasets and Required Files](#-datasets-and-required-files)
+- [How to Run](#-how-to-run)
+- [Common Notes](#-common-notes)
+- [Deactivate Environment](#-deactivate-the-environment)
 
-Set up an isolated Python virtual environment and install all dependencies. Follow the steps for your OS.
+## 🛠️ Environment Setup
 
-### 🍏 macOS Setup
+Create an isolated virtual environment from the Deep Learning project directory.
 
-1. **Open Terminal** and navigate to the project directory:
-   ```bash
-   cd path/to/24AIP-C403-L401-DeepLearning
-   ```
-2. **Create the environment**:
-   ```bash
-   python3 -m venv myenv
-   ```
-3. **Activate the environment**:
-   ```bash
-   source myenv/bin/activate
-   ```
+### Windows (Command Prompt)
 
-### 🪟 Windows Setup
-
-1. **Open Command Prompt (cmd) or PowerShell** and navigate to the folder:
-   ```cmd
-   cd path\to\24AIP-C403-L401-DeepLearning
-   ```
-2. **Create the environment**:
-   ```cmd
-   python -m venv myenv
-   ```
-3. **Activate the environment**:
-   * *In Command Prompt:*
-     ```cmd
-     myenv\Scripts\activate.bat
-     ```
-   * *In PowerShell:*
-     ```powershell
-     .\myenv\Scripts\Activate.ps1
-     ```
-
-> Once active, your terminal line starts with `(myenv)`.
-
----
-
-### 📦 Install Dependencies (All Systems)
-
-With the environment active, run:
-
-```bash
-pip install numpy opencv-python matplotlib scikit-learn tensorflow idx2numpy jupyter
+```cmd
+python -m venv myenv
+myenv\Scripts\activate.bat
 ```
 
-> TensorFlow is large. On a machine **without** a CUDA GPU, pip installs the CPU version automatically — training will just be slower.
+### Windows (PowerShell)
 
----
+```powershell
+python -m venv myenv
+.\myenv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks activation, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\myenv\Scripts\Activate.ps1
+```
+
+### macOS / Linux
+
+```bash
+python3 -m venv myenv
+source myenv/bin/activate
+```
+
+When the environment is active, the terminal prompt displays `(myenv)`.
+
+## 📦 Install Dependencies
+
+With the virtual environment activated, run:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install numpy opencv-python matplotlib scikit-learn tensorflow pandas nltk jupyter
+```
+
+### Package Usage
+
+| Package | Used for |
+|---|---|
+| `numpy` | Numerical processing and arrays |
+| `opencv-python` | Image processing |
+| `matplotlib` | Images, histograms, graphs and charts |
+| `scikit-learn` | Dataset loading and data splitting |
+| `tensorflow` | ANN, CNN, RNN, LSTM, GAN and recommendation models |
+| `pandas` | Sales data processing |
+| `nltk` | Penn Treebank corpus |
+| `jupyter` | Running the notebook |
+
+**Note:** `idx2numpy` is not required. Experiment 3 reads EMNIST IDX files using Python's built-in `gzip` module and NumPy.
+
+TensorFlow installation and training time depend on your Python version and hardware. CPU execution is supported, but training may take longer without a supported GPU.
 
 ## 📋 List of Experiments
 
-|   Folder   |     Exp     | Description / Objective                                                                                                      |
-| :--------: | :---------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| TensorFlow | **1** | Basic image processing with OpenCV — histogram equalization, edge detection, augmentation, morphological ops, thresholding. |
-| TensorFlow | **2** | Build & train an ANN (Keras) for MNIST digit classification.                                                                 |
-| TensorFlow | **3** | Build & train a CNN for EMNIST handwritten-character classification (47 classes).                                            |
-| TensorFlow | **4** | CNN face recognition on the LFW (Labeled Faces in the Wild) dataset.                                                         |
-| TensorFlow | **5** | Character-level text generation using a SimpleRNN trained on Shakespeare text.                                               |
+| Exp. | Experiment | Description / Objective |
+|---:|---|---|
+| 1 | Image Processing (OpenCV) | Histogram equalization, histograms, Gaussian blur, Canny edge detection, augmentation, thresholding, erosion and dilation. |
+| 2 | ANN on MNIST | Build and train an Artificial Neural Network for handwritten digit classification. |
+| 3 | CNN on EMNIST Balanced | Classify handwritten characters across 47 classes using convolution and pooling layers. |
+| 4 | CNN Face Recognition (LFW) | Recognize people from facial images using a CNN and the LFW dataset. |
+| 5 | Character-level Text Generation (SimpleRNN) | Learn character patterns from Shakespeare text and generate new text. |
+| 6 | IMDB Sentiment Analysis (LSTM) | Classify movie reviews as positive or negative and predict sentiment for a custom sentence. |
+| 7 | POS Tagging (Encoder–Decoder LSTM) | Predict a part-of-speech tag for each word using the Penn Treebank corpus. |
+| 8 | English-to-Tamil Translation (Seq2Seq LSTM) | Train an encoder–decoder model on paired English and Tamil sentences. |
+| 9 | GAN Data Augmentation (Fashion-MNIST) | Generate synthetic fashion images and compare classifier performance with and without generated data. |
+| 10 | Recommendation System (Embeddings) | Learn customer and product embeddings and recommend products from purchase history. |
+| 11 | Image Captioning (InceptionV3 + LSTM) | Generate image descriptions using image features and an LSTM decoder trained on Flickr8k. |
 
----
+## 📥 Datasets and Required Files
+
+Some datasets download automatically through TensorFlow, Scikit-learn or NLTK. Other experiments require local files.
+
+Place the required files in the expected working directory or update the corresponding paths in the code.
+
+### Experiment 1 — Image Processing (OpenCV)
+
+- **Input:** Any image, such as `Image_1.jfif`.
+- **Setup:** Change the `path` variable to the location of your image.
+- The code reads the image in grayscale for processing and loads it in color for augmentation.
+
+### Experiment 2 — ANN on MNIST
+
+- **Dataset:** MNIST handwritten digits.
+- **Download:** Automatic through `tf.keras.datasets.mnist.load_data()`.
+- **Manual setup:** Not required.
+
+### Experiment 3 — CNN on EMNIST Balanced
+
+- **Dataset:** EMNIST Balanced (47 classes).
+- **Source:** [NIST EMNIST](https://www.nist.gov/itl/products-and-services/emnist-dataset).
+
+**Required files:**
+
+- `emnist-balanced-train-images-idx3-ubyte.gz`
+- `emnist-balanced-train-labels-idx1-ubyte.gz`
+- `emnist-balanced-test-images-idx3-ubyte.gz`
+- `emnist-balanced-test-labels-idx1-ubyte.gz`
+- `emnist-balanced-mapping.txt`
+
+**Setup:** Place all five files in the working directory, or update the filenames and paths in the `idx()` function and mapping-file read statement.
+
+The notebook uses `gzip` and NumPy to read the IDX files.
+
+### Experiment 4 — CNN Face Recognition (LFW)
+
+- **Dataset:** Labeled Faces in the Wild (LFW).
+- **Source:** [LFW Official Website](http://vis-www.cs.umass.edu/lfw/).
+- **Download:** Automatic through `sklearn.datasets.fetch_lfw_people(min_faces_per_person=70, resize=0.5)`.
+- **Manual setup:** Not required when automatic download is available.
+
+### Experiment 5 — Character-level Text Generation (SimpleRNN)
+
+- **Dataset:** Shakespeare text corpus.
+- **Source:** [Project Gutenberg — Complete Works of Shakespeare](https://www.gutenberg.org/ebooks/100).
+- **Required file:** `shakespeare.txt`.
+
+**Setup:** Download the plain-text UTF-8 version and place `shakespeare.txt` in the working directory, or update the file path in the code.
+
+### Experiment 6 — IMDB Sentiment Analysis (LSTM)
+
+- **Dataset:** IMDB movie reviews.
+- **Download:** Automatic through `tf.keras.datasets.imdb.load_data(num_words=10000)`.
+- **Manual setup:** Not required.
+
+The notebook keeps the top 10,000 words and pads reviews to 200 tokens.
+
+### Experiment 7 — POS Tagging (Encoder–Decoder LSTM)
+
+- **Dataset:** Penn Treebank tagged sentences.
+- **Download:** The notebook runs `nltk.download("treebank")` before loading the corpus.
+- **Manual setup:** Not required when the NLTK download is available.
+
+If the corpus download fails, check your internet connection and run:
+
+```python
+import nltk
+nltk.download("treebank")
+```
+
+### Experiment 8 — English-to-Tamil Translation (Seq2Seq LSTM)
+
+- **Dataset:** Tab-separated English–Tamil sentence pairs.
+- **Required file:** `eng_tamil_pairs.txt`.
+
+**Expected format:** One sentence pair per line, with English first and Tamil second, separated by a tab.
+
+Example:
+
+```text
+Good morning.	காலை வணக்கம்.
+Thank you.	நன்றி.
+How are you?	நீங்கள் எப்படி இருக்கிறீர்கள்?
+```
+
+**Setup:** Place the UTF-8 encoded file in the working directory, or update the file path in the `open()` statement.
+
+**Important:** The notebook does not download this parallel corpus automatically. Provide a suitable sentence-pair dataset before running the experiment.
+
+### Experiment 9 — GAN Data Augmentation (Fashion-MNIST)
+
+- **Dataset:** Fashion-MNIST.
+- **Download:** Automatic through `tf.keras.datasets.fashion_mnist.load_data()`.
+- **Manual setup:** Not required.
+
+The notebook trains a Generator and Discriminator, creates 5,000 synthetic images, and compares a CNN trained on original data with one trained on augmented data.
+
+### Experiment 10 — Recommendation System (Embeddings)
+
+- **Dataset:** Customer purchase / sales records.
+- **Required file:** `sales.csv`.
+
+**Required columns:**
+
+- `customer_id`
+- `product_id`
+- `product_name`
+- `product_category`
+- `quantity`
+- `order_status`
+
+**Setup:** Place `sales.csv` in the working directory, or update:
+
+```python
+pd.read_csv("sales.csv")
+```
+
+The dataset should contain completed orders with positive quantities.
+
+The notebook removes rows with missing required values and uses customer-product pairs to create positive and negative training examples.
+
+**Important:** The notebook does not provide or download the sales CSV. Use a dataset containing the required columns.
+
+### Experiment 11 — Image Captioning (InceptionV3 + LSTM)
+
+- **Dataset:** Flickr8k image-caption dataset.
+
+**Expected directory structure:**
+
+```text
+TensorFlow/
+├── Flicker8k_Dataset/
+│   ├── image1.jpg
+│   └── ...
+└── Flickr8k_text/
+    ├── Flickr8k.token.txt
+    ├── Flickr_8k.trainImages.txt
+    ├── Flickr_8k.devImages.txt
+    └── Flickr_8k.testImages.txt
+```
+
+**Setup:** Download and extract the Flickr8k images and text files. Keep the folder names and filenames consistent with the notebook, or update `img_dir` and `txt_dir`.
+
+**Important:** The notebook currently spells the image directory as `Flicker8k_Dataset` (one `r` after `Flick`). If your extracted folder is named `Flickr8k_Dataset`, either rename the folder or change `img_dir`.
+
+InceptionV3 uses ImageNet weights, which are downloaded automatically the first time the model is created if they are not already cached.
 
 ## 🏃 How to Run
 
-### TensorFlow experiments (`.py` scripts)
+### Run the Reference Notebook
 
-1. Make sure your virtual environment is active.
-2. Run the script with Python:
-   ```bash
-   python TensorFlow/Experiment-1.py
-   ```
+From the project directory, activate the virtual environment and start Jupyter:
 
-   Replace `Experiment-1.py` with the experiment you want (1–5).
+```bash
+jupyter notebook TensorFlow/Short-Version.ipynb
+```
 
----
+Or use JupyterLab:
 
-## 📥 Dataset Sources & Download Instructions
+```bash
+jupyter lab TensorFlow/Short-Version.ipynb
+```
 
-### Experiment 1: Image Processing
-- **Dataset**: Any image of your choice (e.g., `flower.jpeg`)
-- **Location**: `DataBase/Exp1/flower.jpeg` (already included) or use your own image
-- **How to use**: Update the `cv2.imread()` path in `Experiment-1.py` to point to your image file
+Run the cells in order after placing the required local dataset files in the expected locations.
 
-### Experiment 2: MNIST Digit Classification (ANN)
-- **Dataset**: MNIST (built into Keras)
-- **How to use**: No download needed — `tf.keras.datasets.mnist.load_data()` downloads automatically on first run
+### Run an Individual Python Script
 
-### Experiment 3: EMNIST Handwritten Character Classification (CNN)
-- **Dataset**: EMNIST Balanced dataset (47 classes)
-- **Source**: [EMNIST official site](https://www.nist.gov/itl/products-and-services/emnist-dataset) or [PyTorch torchvision](https://pytorch.org/vision/stable/generated/torchvision.datasets.EMNIST.html)
-- **Files needed**:
-  - `emnist-balanced-train-images-idx3-ubyte.gz`
-  - `emnist-balanced-train-labels-idx1-ubyte.gz`
-  - `emnist-balanced-test-images-idx3-ubyte.gz`
-  - `emnist-balanced-test-labels-idx1-ubyte.gz`
-  - `emnist-balanced-mapping.txt` (class index → character mapping)
-- **How to use**: Place all files in `DataBase/Exp3/` and update the `path` variable in `Experiment-3.py`
+If the notebook has been exported into individual `.py` files, run the required script from the project directory:
 
-### Experiment 4: LFW Face Recognition (CNN)
-- **Dataset**: Labeled Faces in the Wild (LFW)
-- **Source**: [LFW official site](http://vis-www.cs.umass.edu/lfw/) or via `sklearn.datasets.fetch_lfw_people()`
-- **How to use**: The script uses `fetch_lfw_people()` which downloads automatically on first run. Ensure `DataBase/Exp4/` exists for any local caching.
+```bash
+python TensorFlow/Experiment-1.py
+```
 
-### Experiment 5: Shakespeare Text Generation (RNN)
-- **Dataset**: Shakespeare's complete works (text file)
-- **Source**: [Project Gutenberg](https://www.gutenberg.org/ebooks/100) — download "Plain Text UTF-8" version
-- **How to use**: Save as `shakespeare.txt` in `DataBase/Exp5/` and update `file_path` in `Experiment-5.py`
+Replace `Experiment-1.py` with the script for the experiment you want to execute. Ensure that its dataset paths are correct.
 
----
+## ⚠️ Common Notes
 
-## ⚠️ Before You Run — Fix the File Paths
+1. **Working directory:** Relative paths such as `Image_1.jfif`, `shakespeare.txt`, `sales.csv` and the Flickr8k folders are resolved from the current working directory.
+2. **Dataset files:** Experiments 3, 5, 8, 10 and 11 need local files or folders.
+3. **Automatic downloads:** Experiments 2, 4, 6, 7 and 9 use automatic dataset downloads.
+4. **Internet access:** The first run may need internet access to download datasets, the NLTK corpus or InceptionV3 pretrained weights.
+5. **Training time:** Experiments 8, 9 and 11 can take considerably longer because of their training loops and model size.
+6. **Notebook order:** Run each experiment from its first cell and keep the required variables and data loaded before executing later cells.
+7. **Outputs:** Accuracy, loss, generated text, translations, recommendations, captions and generated images depend on the dataset, environment and training run. Do not assume fixed numerical results.
 
-The TensorFlow scripts were written on the instructor's machine and contain **hardcoded absolute paths** (e.g. `C:/Users/nagar/Desktop/DL/...`, `D:/Work/...`, `C:/Users/sathi/...`). On your machine these paths will **not exist** and the script will error.
+## 🚪 Deactivate the Environment
 
-For each experiment, open the file and change every hardcoded path to a path on your own computer:
-
-- **Experiment-1 / 2**: point `cv2.imread(...)` at an image you have (or use the `flower.jpeg` in `DataBase/Exp1/`).
-- **Experiment-3**: set `path` to your local `DataBase/Exp3/` folder containing the EMNIST `.gz` files (and the `emnist-balanced-mapping.txt`).
-- **Experiment-5**: set `file_path` to the Shakespeare text file on your machine.
-
-Inputs the scripts expect are already in the **`DataBase/`** folder — copy them next to your script or update the path to point at them.
-
----
-
-## 🚪 Deactivation
-
-When done, close the environment with:
+When you finish, deactivate the virtual environment:
 
 ```bash
 deactivate
 ```
+
+## Reference
+
+- [Short-Version.ipynb — TensorFlow Deep Learning Experiments](TensorFlow/Short-Version.ipynb)
+- [Repository — AMELabz/Edu.in](https://github.com/AMELabz/Edu.in)
