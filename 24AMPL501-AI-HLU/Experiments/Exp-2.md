@@ -53,7 +53,7 @@ It enables computers to understand human language and process text efficiently.
 """
 
 sentences = sent_tokenize(text)
-sentences
+print(sentences)
 
 words = word_tokenize(text)
 print(words)
