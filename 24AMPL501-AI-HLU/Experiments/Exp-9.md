@@ -21,8 +21,8 @@ pip install deep-translator
 ```python
 from deep_translator import GoogleTranslator   # pip install deep-translator
 
-text = input("Enter text to translate: ")
 source = input("Enter source language code (e.g., en, ta, fr, hi): ")
+text = input("Enter text to translate: ")
 target = input("Enter target language code (e.g., en, ta, fr, hi): ")
 
 translated = GoogleTranslator(source=source, target=target).translate(text)
@@ -32,8 +32,8 @@ print("\nTranslated Text:\n" + translated)
 
 ## Output
 ```
-Enter text to translate: how r u
 Enter source language code (e.g., en, ta, fr, hi): en
+Enter text to translate: how r u
 Enter target language code (e.g., en, ta, fr, hi): ta
 
 Original Text:
