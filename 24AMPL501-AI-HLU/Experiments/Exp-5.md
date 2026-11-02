@@ -39,7 +39,7 @@ V -> 'chased' | 'saw'
 grammar
 
 parser = ChartParser(grammar)
-parser
+print(parser)
 
 sentence = "the cat chased the dog"
 words = sentence.split()

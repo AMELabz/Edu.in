@@ -56,20 +56,20 @@ sentences = sent_tokenize(text)
 sentences
 
 words = word_tokenize(text)
-words
+print(words)
 
 stop_words = set(stopwords.words('english'))
 filtered_words = [word for word in words if word.lower() not in stop_words]
-filtered_words
+print(filtered_words)
 
 stemmer = PorterStemmer()
 stemmed_words = [stemmer.stem(word) for word in filtered_words]
-stemmed_words
+print(stemmed_words)
 
 lemmatizer = WordNetLemmatizer()
 lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_words]
 
-lemmatized_words
+print(lemmatized_words)
 ```
 
 ## Output
